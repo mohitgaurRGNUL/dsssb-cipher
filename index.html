@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DSSSB Cipher</title>
+    <title>DSSSB Cipher (v2 - Image Support)</title>
     <style>
         * {
             margin: 0;
@@ -77,6 +77,7 @@
             border-radius: 20px;
             margin-bottom: 30px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            scroll-margin-top: 20px; /* For smooth scrolling */
         }
         .form-title {
             color: #2c3e50;
@@ -97,6 +98,11 @@
         .form-group.full-width {
             grid-column: 1 / -1;
         }
+        .form-group.half-width {
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            display: grid;
+        }
         .form-group label {
             margin-bottom: 8px;
             font-weight: 600;
@@ -110,6 +116,12 @@
             font-size: 1rem;
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
             background-color: #fff;
+            width: 100%;
+        }
+        .form-group textarea {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            resize: vertical;
+            min-height: 60px;
         }
         .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
             outline: none;
@@ -131,6 +143,12 @@
         .btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
+        }
+        .btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
         }
         .btn-danger {
             background: linear-gradient(135deg, #e74c3c, #c0392b);
@@ -164,6 +182,12 @@
         .btn-info:hover {
             box-shadow: 0 8px 25px rgba(155, 89, 182, 0.4);
         }
+        /* Style for table action buttons */
+        .action-btn {
+            padding: 5px 10px;
+            font-size: 0.9rem;
+            margin: 2px;
+        }
         .table-container {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
@@ -179,6 +203,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
         }
         .table-header h2 {
             font-size: 1.5rem;
@@ -198,6 +223,9 @@
             text-align: left;
             border-bottom: 1px solid #e8f4f8;
             white-space: nowrap;
+        }
+        td:last-child {
+            white-space: normal; /* Allow action buttons to wrap */
         }
         th {
             background: #f8f9fa;
@@ -219,6 +247,7 @@
             cursor: pointer;
             font-size: 0.8rem;
             transition: background 0.3s ease;
+            margin: 2px;
         }
         .delete-btn:hover {
             background: #c0392b;
@@ -230,12 +259,16 @@
             margin-bottom: 20px;
             padding: 20px;
         }
-        .filter-container select, .filter-container input {
+        .filter-container select, .filter-container input, .filter-container button {
             padding: 10px;
             border: 2px solid #e0e6ed;
             border-radius: 8px;
             width: 100%;
             background-color: #fff;
+        }
+        .filter-container button {
+            grid-column: 1 / -1;
+            padding: 12px 15px;
         }
         .review-panel {
             position: fixed;
@@ -250,6 +283,8 @@
             transform: translateY(100%);
             transition: transform 0.4s ease-in-out;
             z-index: 1000;
+            max-height: 90vh;
+            overflow-y: auto;
         }
         .review-panel.visible {
             transform: translateY(0);
@@ -268,6 +303,13 @@
             margin-bottom: 20px;
             white-space: pre-wrap;
         }
+        .flashcard img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+        }
         .flashcard-question-text {
             font-weight: 600;
             margin-bottom: 15px;
@@ -278,6 +320,13 @@
         }
         .flashcard-options li {
             margin-bottom: 8px;
+            display: flex;
+            flex-direction: column;
+        }
+        .flashcard-options img {
+            max-width: 100%; /* Changed from 300px */
+            height: auto;
+            border-radius: 8px;
         }
         .flashcard-answer {
             border-top: 1px dashed #bdc3c7;
@@ -286,10 +335,16 @@
             color: #27ae60;
             font-weight: 600;
         }
+        .flashcard-answer img {
+             max-width: 100%; /* Changed from 300px */
+             height: auto;
+             border-radius: 8px;
+        }
         .review-controls {
             display: flex;
             justify-content: center;
             gap: 15px;
+            flex-wrap: wrap;
         }
         .progress-bar-container {
             margin-bottom: 15px;
@@ -350,17 +405,61 @@
             background: none;
         }
         .modal-body {
-            white-space: pre-wrap;
             line-height: 1.8;
+            /* white-space: pre-wrap; */ /* Removed as renderContent handles it */
+        }
+        .modal-body img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+        }
+        .modal-option {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #e0e6ed;
+            margin-bottom: 10px;
+        }
+        .modal-option.correct {
+            border-color: #27ae60;
+            background-color: #f0fdf4;
+            box-shadow: 0 0 10px rgba(39, 174, 96, 0.1);
+        }
+        .modal-option.correct-label {
+             font-weight: bold;
+             color: #27ae60;
         }
         @media (max-width: 768px) {
             .container { padding: 10px; }
             .header h1 { font-size: 1.8rem; }
-            .form-grid { grid-template-columns: 1fr; }
+            .form-grid, .form-group.half-width { grid-template-columns: 1fr; }
             .table-header {
                 flex-direction: column;
                 gap: 15px;
                 align-items: flex-start;
+            }
+            .table-header div {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                width: 100%;
+            }
+            .table-header .btn {
+                margin-left: 0;
+                width: 100%;
+            }
+            
+            /* Mobile modal and review panel button adjustments */
+            .review-controls .btn, .modal-footer .btn {
+                padding: 12px 20px;
+                font-size: 0.9rem;
+            }
+            .modal-box {
+                padding: 20px;
+            }
+            .modal-title {
+                font-size: 1.2rem;
             }
         }
     </style>
@@ -369,7 +468,7 @@
     <div class="container">
         <div class="header">
             <h1>DSSSB Cipher</h1>
-            <p>Log and analyze each question to identify strengths and weaknesses.</p>
+            <p>Log and analyze each question (text and images) to identify strengths and weaknesses.</p>
         </div>
 
         <div class="stats-container">
@@ -392,7 +491,7 @@
         </div>
 
         <div class="form-container">
-            <h2 class="form-title">Add Single Question</h2>
+            <h2 class="form-title" id="formTitle">Add Single Question</h2>
             <div class="form-grid">
                  <div class="form-group">
                     <label for="paperNumber">Paper Number</label>
@@ -429,38 +528,84 @@
                     </select>
                 </div>
                  <div class="form-group full-width">
-                    <label for="questionText">Question Text</label>
+                    <label for="questionText">Question Text (Optional)</label>
                     <textarea id="questionText" rows="3" placeholder="Enter the full question text here..."></textarea>
                 </div>
-                <div class="form-group">
-                    <label for="optionA">Option A</label>
-                    <input type="text" id="optionA" placeholder="Text for option A">
+                <div class="form-group full-width">
+                    <label for="questionImage">Question Image Base64 (Optional)</label>
+                    <textarea id="questionImage" rows="3" placeholder="Paste Base64 for question image (e.g., data:image/png;base64,iVBO...)..."></textarea>
                 </div>
-                <div class="form-group">
-                    <label for="optionB">Option B</label>
-                    <input type="text" id="optionB" placeholder="Text for option B">
+
+                <!-- Option A -->
+                <div class="form-group half-width full-width">
+                    <div>
+                        <label for="optionA">Option A Text (Optional)</label>
+                        <input type="text" id="optionA" placeholder="Text for option A">
+                    </div>
+                    <div>
+                        <label for="optionAImage">Option A Image Base64 (Optional)</label>
+                        <textarea id="optionAImage" rows="2" placeholder="Paste Base64 for option A..."></textarea>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="optionC">Option C</label>
-                    <input type="text" id="optionC" placeholder="Text for option C">
+                <!-- Option B -->
+                <div class="form-group half-width full-width">
+                    <div>
+                        <label for="optionB">Option B Text (Optional)</label>
+                        <input type="text" id="optionB" placeholder="Text for option B">
+                    </div>
+                    <div>
+                        <label for="optionBImage">Option B Image Base64 (Optional)</label>
+                        <textarea id="optionBImage" rows="2" placeholder="Paste Base64 for option B..."></textarea>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="optionD">Option D</label>
-                    <input type="text" id="optionD" placeholder="Text for option D">
+                <!-- Option C -->
+                <div class="form-group half-width full-width">
+                    <div>
+                        <label for="optionC">Option C Text (Optional)</label>
+                        <input type="text" id="optionC" placeholder="Text for option C">
+                    </div>
+                    <div>
+                        <label for="optionCImage">Option C Image Base64 (Optional)</label>
+                        <textarea id="optionCImage" rows="2" placeholder="Paste Base64 for option C..."></textarea>
+                    </div>
                 </div>
-                 <div class="form-group full-width">
-                    <label for="correctAnswer">Correct Answer Text</label>
-                    <textarea id="correctAnswer" rows="2" placeholder="Enter the full text of the correct answer..."></textarea>
+                <!-- Option D -->
+                <div class="form-group half-width full-width">
+                    <div>
+                        <label for="optionD">Option D Text (Optional)</label>
+                        <input type="text" id="optionD" placeholder="Text for option D">
+                    </div>
+                    <div>
+                        <label for="optionDImage">Option D Image Base64 (Optional)</label>
+                        <textarea id="optionDImage" rows="2" placeholder="Paste Base64 for option D..."></textarea>
+                    </div>
+                </div>
+                
+                 <div class="form-group">
+                    <label for="correctOption">Correct Option</label>
+                    <select id="correctOption" required>
+                        <option value="">Select Correct Option</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                    </select>
+                </div>
+                <div class="form-group full-width">
+                    <label for="correctAnswerText">Correct Answer Explanation (Optional)</label>
+                    <textarea id="correctAnswerText" rows="2" placeholder="Enter an explanation or the text of the correct answer..."></textarea>
                 </div>
             </div>
-            <button class="btn" onclick="addQuestion()">Add Question</button>
+            <!-- Modified Button Section -->
+            <button class="btn" id="addQuestionBtn" onclick="addQuestion()">Add Question</button>
+            <button class="btn btn-secondary" id="cancelEditBtn" onclick="cancelEdit()" style="display: none; margin-left: 10px;">Cancel Edit</button>
         </div>
         
         <div class="form-container">
             <h2 class="form-title">Batch Import Questions</h2>
             <div class="form-group">
-                <label for="batchData">Paste Gem Output Here</label>
-                <textarea id="batchData" rows="10" placeholder="Paste the JSON array from the Gem here..."></textarea>
+                <label for="batchData">Paste Gem Output Here (from converter.html)</label>
+                <textarea id="batchData" rows="10" placeholder="Paste the JSON array from the Gem or Converter tool here..."></textarea>
             </div>
             <button class="btn" onclick="batchImport()">Import Batch</button>
         </div>
@@ -482,11 +627,14 @@
                 <select id="filterPaper" onchange="filterData()">
                     <option value="">All Papers</option>
                 </select>
+                <!-- 
+                REMOVED per request 1
                 <select id="filterSection" onchange="updateFilterSubjectOptions()">
                     <option value="">All Sections</option>
                     <option value="Section A">Section A</option>
                     <option value="Section B">Section B</option>
-                </select>
+                </select> 
+                -->
                 <select id="filterSubject" onchange="updateFilterTopicOptions()" disabled>
                     <option value="">All Subjects</option>
                 </select>
@@ -496,7 +644,8 @@
                 <select id="filterSubtopic" onchange="filterData()" disabled>
                     <option value="">All Subtopics</option>
                 </select>
-                 <input type="text" id="searchQNum" placeholder="Search by Q#" onkeyup="filterData()">
+                 <!-- MODIFIED per request 4 -->
+                 <input type="text" id="searchKeyword" placeholder="Search by Keyword or Q#" onkeyup="filterData()">
                  <button class="btn" onclick="startReview()">Start Review of Filtered Questions</button>
             </div>
             <div class="table-wrapper">
@@ -510,8 +659,8 @@
                             <th>Subject</th>
                             <th>Topic</th>
                             <th>Subtopic</th>
-                            <th>Details</th>
                             <th>Actions</th>
+                            <th>Delete</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody">
@@ -528,7 +677,9 @@
             </div>
         </div>
         <div class="flashcard" id="flashcard">
+            <!-- Content dynamically inserted by loadNextCard() -->
             <div id="flashcardContent">
+                <!-- Metadata will be inserted here -->
                 <div class="flashcard-question-text"></div>
                 <ul class="flashcard-options">
                     <li></li>
@@ -539,8 +690,16 @@
             </div>
             <div id="flashcardAnswer" class="flashcard-answer" style="display: none;"></div>
         </div>
+        <!-- MODIFIED per request 3 -->
         <div class="review-controls" id="reviewControls">
             <button class="btn" id="showAnswerBtn" onclick="showAnswer()">Show Answer</button>
+            <!-- New Nav Controls -->
+            <div id="navControls" style="display: none; width: 100%; justify-content: space-between; align-items: center; gap: 15px;">
+                 <button class="btn btn-tertiary" onclick="navigateReview(-1)" id="reviewPrevBtn">&larr; Previous</button>
+                 <span id="reviewCounter" style="font-size: 0.9rem; color: #555; white-space: nowrap;"></span>
+                 <button class="btn" onclick="navigateReview(1)" id="reviewNextBtn">Next &rarr;</button>
+            </div>
+            <!-- Old Rating Controls (kept in HTML but hidden) -->
             <div id="ratingControls" style="display: none;">
                  <button class="btn btn-danger" onclick="rateCard('Again')">Again</button>
                  <button class="btn btn-tertiary" onclick="rateCard('Hard')">Hard</button>
@@ -557,6 +716,7 @@
                 <h2 class="modal-title" id="modalTitle">Question Details</h2>
                 <button class="modal-close-btn" onclick="closeDetailsModal()">&times;</button>
             </div>
+            <!-- Content (including footer) dynamically inserted by renderModalContent() -->
             <div class="modal-body" id="modalBody">
             </div>
         </div>
@@ -616,10 +776,10 @@
                 "CONSERVATION OF NATURAL RESOURCES": ["Pollution of river water, Ganga action plan for improving quality of water", "Need for sustainable management of natural resources", "Development of non- conventional energy resources to prevent pollution and atmospheric conservation"],
                 "Improvement in Food Resources": ["Improvement in crop yield", "Animal Husbandry", "Need for intercropping", "Cross Breeding"],
                 "Bone and Cartilage": ["Structure and types of bones and cartilages, Ossification, bone growth and resorption"],
-                "Animal Diversity": ["Kingdom Protista, Amphibia, Reptiles, Aves, Mammals", "Phylüm Porifera, Phylum Cnidaria, Phylum Annelida, Phylum Arthròpoda, Phylum Mollusca"],
-                "Comparative Anatomy and Developmental Biology of Vertebrates": ["Integumentary System, Skeletal System, Digestive System, Respiratory System, Circulatory System, Urinogenital System, Nervous system, Sense Organ", "Early Embryonoic Development, Late Embryonic Development, Control of Development"],
-                "Physiology and Biochemistry": ["Nerve and Muscle, Digestion, Respiration, Excretion, Cardiovascular System, Reproduction and Endocrine Glands", "Carbohydrate Metabolism, Lipid Metabolism, Protein Metabolism, Enzymes, Extinction, Macro-evolution"],
-                "Applied Zoology": ["Introduction to Host-parasite Relationship", "Epidemiology of Diseases,Rickettsiaeand Spirochaetes", "Parasitic Protozoa", "Parasitic Helminthes", "Insects of Eco Importance,Insects of Medical Importance", "Animal Husbandry, Poultry Farming, Fish Technology"],
+                "Animal Diversity": ["Kingdom Protista, Amphibia, Reptiles, Aves, Mammals", "Phylüm Porifera, Phylum Cnidaria, Phylüm Annelida, Phylum Arthròpoda, Phylum Mollusca"],
+                "Comparative Anatomy and Developmental Biology of Vertebrates": ["Integumentary System", "Skeletal System", "Digestive System", "Respiratory System", "Circulatory System", "Urinogenital System", "Nervous system", "Sense Organ", "Early Embryonoic Development", "Late Embryonic Development", "Control of Development"],
+                "Physiology and Biochemistry": ["Nerve and Muscle", "Digestion", "Respiration", "Excretion", "Cardiovascular System", "Reproduction and Endocrine Glands", "Carbohydrate Metabolism", "Lipid Metabolism", "Protein Metabolism", "Enzymes", "Extinction", "Macro-evolution"],
+                "Applied Zoology": ["Introduction to Host-parasite Relationship", "Epidemiology of Diseases,Rickettsiaeand Spirochaetes", "Parasitic Protozoa", "Parasitic Helminthes", "Insects of Eco Importance,Insects of Medical Importance", "Animal Husbandry", "Poultry Farming", "Fish Technology"],
                 "Aquatic Biology": ["Aquatic Biomes", "Freshwater Biology", "Marine Biology", "Management of Aquatic Resources"],
                 "Immunology": ["Overview of the Immune System", "Cells and Organs of the Immune System", "Antigens", "Antibodies", "Working of the immune system", "Immune system in health and disease", "Vaccines"],
                 "Reproductive Biology": ["Reproductive Endocrinology", "Functional anatomy of male reproduction", "Functional anatomy of female reproduction", "Reproductive Health"],
@@ -635,6 +795,9 @@
         questions: [],
         currentIndex: 0
     };
+    let currentlyEditingId = null; // Holds the ID of the question being edited
+    // Added per request 3: Context for modal navigation
+    let modalViewContext = { list: [], currentIndex: -1 };
 
     // Form Dropdown Elements
     const sectionSelect = document.getElementById('section');
@@ -644,10 +807,40 @@
 
     // Filter Dropdown Elements
     const filterPaperSelect = document.getElementById('filterPaper');
-    const filterSectionSelect = document.getElementById('filterSection');
+    // const filterSectionSelect = document.getElementById('filterSection'); // Removed per request 1
     const filterSubjectSelect = document.getElementById('filterSubject');
     const filterTopicSelect = document.getElementById('filterTopic');
     const filterSubtopicSelect = document.getElementById('filterSubtopic');
+
+    /**
+     * Helper function to render text or an image.
+     * @param {string} text - The text content.
+     * @param {string} imageBase64 - The Base64 encoded image string.
+     * @returns {string} HTML string to render.
+     */
+    // MODIFIED per request 2: Improve text rendering to respect newlines
+    function renderContent(text, imageBase64) {
+        let content = '';
+        if (text) {
+            // Sanitize text by creating a text node
+            const textNode = document.createTextNode(text);
+            // Use a <pre> tag to preserve whitespace and newlines, but style it to wrap
+            const pre = document.createElement('pre');
+            pre.appendChild(textNode);
+            pre.style.whiteSpace = 'pre-wrap'; // Ensure wrapping
+            pre.style.fontFamily = 'inherit'; // Use body font
+            pre.style.margin = '0'; // Reset <pre> default margin
+            pre.style.padding = '0'; // Reset <pre> default padding
+            pre.style.border = 'none'; // Reset <pre> default border
+            pre.style.background = 'transparent'; // Reset <pre> default background
+            content += pre.outerHTML;
+        }
+        if (imageBase64 && imageBase64.startsWith('data:image')) {
+            content += `<img src="${imageBase64}" alt="Question content" style="max-width: 100%; height: auto; border-radius: 8px; margin-top: 5px;">`;
+        }
+        return content || '(No content)';
+    }
+
 
     function populateDropdown(selectElement, items, prompt) {
         const currentValue = selectElement.value;
@@ -671,7 +864,7 @@
         topicSelect.disabled = true;
         subtopicSelect.disabled = true;
         if (this.value) {
-            const subjects = Object.keys(syllabusStructure[this.value]);
+            const subjects = Object.keys(syllabusStructure[this.value] || {});
             populateDropdown(subjectSelect, subjects, 'Select Subject');
         }
     });
@@ -683,7 +876,7 @@
         subtopicSelect.disabled = true;
         const section = sectionSelect.value;
         if (section && this.value) {
-            const topics = Object.keys(syllabusStructure[section][this.value]);
+            const topics = Object.keys(syllabusStructure[section][this.value] || {});
             populateDropdown(topicSelect, topics, 'Select Topic');
         }
     });
@@ -694,107 +887,167 @@
         const section = sectionSelect.value;
         const subject = subjectSelect.value;
         if (section && subject && this.value) {
-            const subtopics = syllabusStructure[section][subject][this.value];
+            const subtopics = syllabusStructure[section][subject][this.value] || [];
             populateDropdown(subtopicSelect, subtopics, 'Select Subtopic');
         }
     });
     
     // Filter Dropdown Logic
+    
+    // ADDED per request 1: Helper function to find section
+    function findSectionForSubject(subjectName) {
+        if (!subjectName) return null;
+        if (syllabusStructure["Section A"][subjectName]) {
+            return "Section A";
+        }
+        if (syllabusStructure["Section B"][subjectName]) {
+            return "Section B";
+        }
+        return null; // Not found
+    }
+    
+    // MODIFIED per request 1: Load all subjects, remove section dependency
     function updateFilterSubjectOptions() {
         filterSubjectSelect.innerHTML = '<option value="">All Subjects</option>';
         filterTopicSelect.innerHTML = '<option value="">All Topics</option>';
         filterSubtopicSelect.innerHTML = '<option value="">All Subtopics</option>';
-        filterSubjectSelect.disabled = true;
+        // filterSubjectSelect.disabled = true; // Removed
         filterTopicSelect.disabled = true;
         filterSubtopicSelect.disabled = true;
         
-        const section = filterSectionSelect.value;
-        if (section) {
-            const subjects = Object.keys(syllabusStructure[section]);
-            populateDropdown(filterSubjectSelect, subjects, 'All Subjects');
-        }
+        // const section = filterSectionSelect.value; // Removed
+        
+        const subjectsA = Object.keys(syllabusStructure["Section A"] || {});
+        const subjectsB = Object.keys(syllabusStructure["Section B"] || {});
+        const allSubjects = [...new Set([...subjectsA, ...subjectsB])].sort();
+
+        populateDropdown(filterSubjectSelect, allSubjects, 'All Subjects');
+        filterSubjectSelect.disabled = false; // Enable it
+        
         filterData();
     }
     
+    // MODIFIED per request 1: Find section based on subject
     function updateFilterTopicOptions() {
         filterTopicSelect.innerHTML = '<option value="">All Topics</option>';
         filterSubtopicSelect.innerHTML = '<option value="">All Subtopics</option>';
         filterTopicSelect.disabled = true;
         filterSubtopicSelect.disabled = true;
 
-        const section = filterSectionSelect.value;
+        // const section = filterSectionSelect.value; // Removed
         const subject = filterSubjectSelect.value;
+        const section = findSectionForSubject(subject); // Added
+        
         if (section && subject) {
-            const topics = Object.keys(syllabusStructure[section][subject]);
+            const topics = Object.keys(syllabusStructure[section][subject] || {});
             populateDropdown(filterTopicSelect, topics, 'All Topics');
         }
         filterData();
     }
 
+    // MODIFIED per request 1: Find section based on subject
     function updateFilterSubtopicOptions() {
         filterSubtopicSelect.innerHTML = '<option value="">All Subtopics</option>';
         filterSubtopicSelect.disabled = true;
 
-        const section = filterSectionSelect.value;
+        // const section = filterSectionSelect.value; // Removed
         const subject = filterSubjectSelect.value;
         const topic = filterTopicSelect.value;
+        const section = findSectionForSubject(subject); // Added
+
         if (section && subject && topic) {
-            const subtopics = syllabusStructure[section][subject][topic];
+            const subtopics = syllabusStructure[section][subject][topic] || [];
             populateDropdown(filterSubtopicSelect, subtopics, 'All Subtopics');
         }
         filterData();
     }
 
     function addQuestion() {
-        const formData = {
-            paperNumber: document.getElementById('paperNumber').value,
-            questionNumber: document.getElementById('questionNumber').value,
-            section: sectionSelect.value,
-            subject: subjectSelect.value,
-            topic: topicSelect.value,
-            subtopic: subtopicSelect.value,
-            questionText: document.getElementById('questionText').value,
-            options: {
-                a: document.getElementById('optionA').value,
-                b: document.getElementById('optionB').value,
-                c: document.getElementById('optionC').value,
-                d: document.getElementById('optionD').value,
-            },
-            correctAnswer: document.getElementById('correctAnswer').value,
-            reviewStatus: 'new',
-            easeFactor: 2.5,
-            interval: 0,
-            nextReviewDate: new Date().toISOString()
-        };
-
-        const requiredFields = ['paperNumber', 'questionNumber', 'section', 'subject', 'topic', 'subtopic', 'questionText', 'correctAnswer'];
-        for (let field of requiredFields) {
-            if (!formData[field]) {
-                alert(`Please fill in the '${field}' field.`);
-                return;
-            }
-        }
+        const formData = getFormData();
+        if (!formData) return; // Validation failed
 
         const uniqueId = `${formData.paperNumber}-${formData.questionNumber}`;
         if (questionsData.some(q => `${q.paperNumber}-${q.questionNumber}` === uniqueId)) {
             if (!confirm(`Question ${formData.questionNumber} from Paper ${formData.paperNumber} already exists. Do you want to overwrite it?`)) {
                 return;
             }
-            questionsData = questionsData.filter(q => `${q.paperNumber}-${q.questionNumber}` !== uniqueId);
+            // If user confirms overwrite, find and replace
+            const indexToUpdate = questionsData.findIndex(q => `${q.paperNumber}-${q.questionNumber}` === uniqueId);
+            questionsData[indexToUpdate] = formData;
+        } else {
+            // Otherwise, just add as new
+            questionsData.push(formData);
         }
 
-        questionsData.push(formData);
         questionsData.sort((a, b) => (a.paperNumber - b.paperNumber) || (a.questionNumber - b.questionNumber));
         saveData();
         renderTable();
         updateStats();
         updateAllFilterOptions();
-        clearForm();
+        clearForm(); // This will clear text fields
+        cancelEdit(); // This will reset buttons
     }
-    
+
+    /**
+     * Reads all data from the form and returns a validated question object.
+     * Returns null if validation fails.
+     */
+    function getFormData() {
+         const formData = {
+            paperNumber: document.getElementById('paperNumber').value,
+            questionNumber: document.getElementById('questionNumber').value,
+            section: sectionSelect.value,
+            subject: subjectSelect.value,
+            topic: topicSelect.value,
+            subtopic: subtopicSelect.value,
+            questionText: document.getElementById('questionText').value.trim(),
+            questionImage: document.getElementById('questionImage').value.trim(),
+            options: {
+                a: document.getElementById('optionA').value.trim(),
+                b: document.getElementById('optionB').value.trim(),
+                c: document.getElementById('optionC').value.trim(),
+                d: document.getElementById('optionD').value.trim(),
+            },
+            optionAImage: document.getElementById('optionAImage').value.trim(),
+            optionBImage: document.getElementById('optionBImage').value.trim(),
+            optionCImage: document.getElementById('optionCImage').value.trim(),
+            optionDImage: document.getElementById('optionDImage').value.trim(),
+            correctOption: document.getElementById('correctOption').value,
+            correctAnswerText: document.getElementById('correctAnswerText').value.trim(),
+            // Set defaults for review status, will be overwritten if updating
+            reviewStatus: 'new',
+            easeFactor: 2.5,
+            interval: 0,
+            nextReviewDate: new Date().toISOString()
+        };
+
+        const requiredFields = ['paperNumber', 'questionNumber', 'section', 'subject', 'topic', 'subtopic', 'correctOption'];
+        for (let field of requiredFields) {
+            // Allow subtopic 'N/A'
+            if (field === 'subtopic' && formData[field] === 'N/A') continue;
+            
+            if (!formData[field]) {
+                alert(`Please fill in the '${field}' field.`);
+                return null;
+            }
+        }
+        
+        if (!formData.questionText && !formData.questionImage) {
+            alert('Please provide either Question Text or a Question Image.');
+            return null;
+        }
+        
+        return formData;
+    }
+
+    /**
+     * Clears all fields in the "Add Single Question" form.
+     */
     function clearForm() {
+        document.getElementById('formTitle').textContent = 'Add Single Question';
         document.getElementById('paperNumber').value = '';
         document.getElementById('questionNumber').value = '';
+        
         sectionSelect.value = '';
         subjectSelect.innerHTML = '<option value="">Select Subject</option>';
         topicSelect.innerHTML = '<option value="">Select Topic</option>';
@@ -802,13 +1055,131 @@
         subjectSelect.disabled = true;
         topicSelect.disabled = true;
         subtopicSelect.disabled = true;
+        
         document.getElementById('questionText').value = '';
+        document.getElementById('questionImage').value = '';
         document.getElementById('optionA').value = '';
+        document.getElementById('optionAImage').value = '';
         document.getElementById('optionB').value = '';
+        document.getElementById('optionBImage').value = '';
         document.getElementById('optionC').value = '';
+        document.getElementById('optionCImage').value = '';
         document.getElementById('optionD').value = '';
-        document.getElementById('correctAnswer').value = '';
+        document.getElementById('optionDImage').value = '';
+        document.getElementById('correctOption').value = '';
+        document.getElementById('correctAnswerText').value = '';
     }
+
+    /**
+     * Resets the form from "Edit" mode back to "Add" mode.
+     */
+    function cancelEdit() {
+        currentlyEditingId = null;
+        clearForm(); // clearForm will reset all the text fields
+        
+        // Reset button
+        document.getElementById('addQuestionBtn').textContent = 'Add Question';
+        document.getElementById('addQuestionBtn').onclick = addQuestion;
+        document.getElementById('cancelEditBtn').style.display = 'none';
+        document.getElementById('formTitle').textContent = 'Add Single Question';
+    }
+
+    /**
+     * Loads a question's data into the form for editing.
+     * @param {string} uniqueId - The ID of the question to edit (e.g., "1-101").
+     */
+    async function loadQuestionForEdit(uniqueId) {
+        const question = questionsData.find(q => `${q.paperNumber}-${q.questionNumber}` === uniqueId);
+        if (!question) return;
+
+        // --- TEXT & NUMBER FIELDS ---
+        document.getElementById('paperNumber').value = question.paperNumber;
+        document.getElementById('questionNumber').value = question.questionNumber;
+        document.getElementById('questionText').value = question.questionText || '';
+        document.getElementById('questionImage').value = question.questionImage || '';
+        
+        document.getElementById('optionA').value = question.options.a || '';
+        document.getElementById('optionAImage').value = question.optionAImage || '';
+        document.getElementById('optionB').value = question.options.b || '';
+        document.getElementById('optionBImage').value = question.optionBImage || '';
+        document.getElementById('optionC').value = question.options.c || '';
+        document.getElementById('optionCImage').value = question.optionCImage || '';
+        document.getElementById('optionD').value = question.options.d || '';
+        document.getElementById('optionDImage').value = question.optionDImage || '';
+        
+        document.getElementById('correctOption').value = question.correctOption || '';
+        document.getElementById('correctAnswerText').value = question.correctAnswerText || '';
+
+        // --- DYNAMIC DROPDOWNS ---
+        // We need to set the value and trigger the change event to populate the next dropdown.
+        
+        // 1. Set Section
+        sectionSelect.value = question.section;
+        sectionSelect.dispatchEvent(new Event('change')); // Populates subjects
+        
+        // 2. Set Subject
+        subjectSelect.value = question.subject;
+        subjectSelect.dispatchEvent(new Event('change')); // Populates topics
+
+        // 3. Set Topic
+        topicSelect.value = question.topic;
+        topicSelect.dispatchEvent(new Event('change')); // Populates subtopics
+
+        // 4. Set Subtopic
+        subtopicSelect.value = question.subtopic;
+
+        // --- FORM STATE ---
+        currentlyEditingId = uniqueId;
+        document.getElementById('formTitle').textContent = `Editing Paper ${question.paperNumber} - Q# ${question.questionNumber}`;
+        document.getElementById('addQuestionBtn').textContent = 'Update Question';
+        document.getElementById('addQuestionBtn').onclick = updateQuestion;
+        document.getElementById('cancelEditBtn').style.display = 'inline-block';
+
+        // Scroll to the form
+        document.querySelector('.form-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    
+    /**
+     * Updates an existing question with data from the form.
+     */
+    function updateQuestion() {
+        const formData = getFormData();
+        if (!formData) return; // Validation failed
+
+        // --- Check for ID conflict ---
+        const newUniqueId = `${formData.paperNumber}-${formData.questionNumber}`;
+        // Check if the new ID conflicts with an *existing* question that is *not* the one we're editing
+        if (newUniqueId !== currentlyEditingId && questionsData.some(q => `${q.paperNumber}-${q.questionNumber}` === newUniqueId)) {
+            alert(`Error: A question with Paper ${formData.paperNumber} and Q# ${formData.questionNumber} already exists. Cannot update to this ID.`);
+            return;
+        }
+
+        // --- Find and update ---
+        const indexToUpdate = questionsData.findIndex(q => `${q.paperNumber}-${q.questionNumber}` === currentlyEditingId);
+        if (indexToUpdate !== -1) {
+            // Preserve review stats from the original question
+            const originalQuestion = questionsData[indexToUpdate];
+            formData.reviewStatus = originalQuestion.reviewStatus || 'new';
+            formData.easeFactor = originalQuestion.easeFactor || 2.5;
+            formData.interval = originalQuestion.interval || 0;
+            formData.nextReviewDate = originalQuestion.nextReviewDate || new Date().toISOString();
+            
+            // Replace the old question data with the new form data
+            questionsData[indexToUpdate] = formData;
+        } else {
+            // This shouldn't happen if currentlyEditingId is set
+            console.error("Error: Could not find question to update. Appending as new question instead.");
+            questionsData.push(formData); // Fallback
+        }
+
+        questionsData.sort((a, b) => (a.paperNumber - b.paperNumber) || (a.questionNumber - b.questionNumber));
+        saveData();
+        renderTable();
+        updateStats();
+        updateAllFilterOptions();
+        cancelEdit(); // Reset the form
+    }
+
 
     function renderTable() {
         const tbody = document.getElementById('tableBody');
@@ -820,6 +1191,7 @@
         filtered.forEach((question) => {
             const row = document.createElement('tr');
             const uniqueId = `${question.paperNumber}-${question.questionNumber}`;
+            // Added Edit button and moved Delete to its own column
             row.innerHTML = `
                 <td><input type="checkbox" class="row-selector" data-id="${uniqueId}"></td>
                 <td>${question.paperNumber}</td>
@@ -828,7 +1200,10 @@
                 <td>${question.subject}</td>
                 <td>${question.topic}</td>
                 <td>${question.subtopic}</td>
-                <td><button class="btn" style="padding: 5px 10px;" onclick="showDetailsModal('${uniqueId}')">View</button></td>
+                <td>
+                    <button class="btn action-btn" style="padding: 5px 10px;" onclick="showDetailsModal('${uniqueId}')">View</button>
+                    <button class="btn btn-tertiary action-btn" style="padding: 5px 10px; margin-left: 5px;" onclick="loadQuestionForEdit('${uniqueId}')">Edit</button>
+                </td>
                 <td><button class="delete-btn" onclick="deleteQuestion('${uniqueId}')">Delete</button></td>
             `;
             tbody.appendChild(row);
@@ -850,30 +1225,34 @@
         populateDropdown(filterPaperSelect, papers, 'All Papers');
     }
 
+    // MODIFIED per request 1 (remove section) and 4 (keyword search)
     function getFilteredData() {
         const paperFilter = filterPaperSelect.value;
-        const sectionFilter = filterSectionSelect.value;
+        // const sectionFilter = filterSectionSelect.value; // Removed
         const subjectFilter = filterSubjectSelect.value;
         const topicFilter = filterTopicSelect.value;
         const subtopicFilter = filterSubtopicSelect.value;
-        const searchFilter = document.getElementById('searchQNum').value.trim();
+        const searchKeyword = document.getElementById('searchKeyword').value.trim().toLowerCase(); // Changed
 
         return questionsData.filter(q => {
             // Trim data fields before comparison to be resilient to whitespace in imported data.
-            const qSection = q.section ? q.section.trim() : '';
+            // const qSection = q.section ? q.section.trim() : ''; // Removed
             const qSubject = q.subject ? q.subject.trim() : '';
             const qTopic = q.topic ? q.topic.trim() : '';
             const qSubtopic = q.subtopic ? q.subtopic.trim() : '';
-
-            // FIX: Changed strict equality (===) to loose equality (==) for paperNumber.
-            // This handles cases where one value is a number (e.g., 12) and the other is a string (e.g., "12").
+            
             const paperMatch = !paperFilter || q.paperNumber == paperFilter;
-            const sectionMatch = !sectionFilter || qSection === sectionFilter;
+            // const sectionMatch = !sectionFilter || qSection === sectionFilter; // Removed
             const subjectMatch = !subjectFilter || qSubject === subjectFilter;
             const topicMatch = !topicFilter || qTopic === topicFilter;
             const subtopicMatch = !subtopicFilter || qSubtopic === subtopicFilter;
-            const searchMatch = !searchFilter || q.questionNumber.toString().includes(searchFilter);
-            return paperMatch && sectionMatch && subjectMatch && topicMatch && subtopicMatch && searchMatch;
+            
+            // Modified per request 4
+            const keywordMatch = !searchKeyword || 
+                                     (q.questionText && q.questionText.toLowerCase().includes(searchKeyword)) ||
+                                     (q.questionNumber && q.questionNumber.toString().toLowerCase().includes(searchKeyword));
+
+            return paperMatch && subjectMatch && topicMatch && subtopicMatch && keywordMatch; // Updated
         });
     }
 
@@ -993,8 +1372,9 @@ Now, based on the following metadata and question text, generate the output:
             metadataText += `Subject: ${q.subject}\n`;
             metadataText += `Topic: ${q.topic}\n`;
             metadataText += `Subtopic: ${q.subtopic}\n`;
-            metadataText += `Question: ${q.questionText}\n`;
-            metadataText += `Correct Answer: ${q.correctAnswer}\n\n`;
+            metadataText += `Question: ${q.questionText || '(Image Question)'}\n`;
+            metadataText += `Correct Option: ${q.correctOption}\n`;
+            metadataText += `Explanation: ${q.correctAnswerText || 'N/A'}\n\n`;
         });
 
         // Copy to clipboard
@@ -1009,30 +1389,37 @@ Now, based on the following metadata and question text, generate the output:
     }
 
     function saveData() {
-        localStorage.setItem('dsssbExamAnalysisV5', JSON.stringify(questionsData));
+        localStorage.setItem('dsssbExamAnalysisV5_Images', JSON.stringify(questionsData));
     }
 
     function loadData() {
-        const data = localStorage.getItem('dsssbExamAnalysisV5');
+        const data = localStorage.getItem('dsssbExamAnalysisV5_Images');
         if (data) {
             questionsData = JSON.parse(data);
         }
         renderTable();
         updateStats();
         updateAllFilterOptions();
+        // MODIFIED per request 1: Initialize subject filter on load
+        updateFilterSubjectOptions();
     }
 
     // Helper function to convert an array of objects to a CSV string
     function convertToCSV(data) {
         if (data.length === 0) return '';
-        const headers = ['Paper Number', 'Question Number', 'Section', 'Subject', 'Topic', 'Subtopic', 'Question Text', 'Option A', 'Option B', 'Option C', 'Option D', 'Correct Answer'];
+        // Updated headers to include new fields
+        const headers = [
+            'Paper Number', 'Question Number', 'Section', 'Subject', 'Topic', 'Subtopic', 
+            'Question Text', 'Option A', 'Option B', 'Option C', 'Option D', 
+            'Correct Option', 'Correct Answer Text',
+            'Question Image', 'Option A Image', 'Option B Image', 'Option C Image', 'Option D Image'
+        ];
+        
         const rows = data.map(q => {
             // Function to safely wrap a value in quotes for CSV
             const escapeCSV = (val) => {
                 if (val === undefined || val === null) return '';
                 const str = String(val);
-                // If the string contains a comma, a double quote, or a newline, wrap it in double quotes.
-                // Also, double up any existing double quotes.
                 if (str.includes(',') || str.includes('"') || str.includes('\n')) {
                     return `"${str.replace(/"/g, '""')}"`;
                 }
@@ -1047,11 +1434,17 @@ Now, based on the following metadata and question text, generate the output:
                 escapeCSV(q.topic),
                 escapeCSV(q.subtopic),
                 escapeCSV(q.questionText),
-                escapeCSV(q.options.a),
-                escapeCSV(q.options.b),
-                escapeCSV(q.options.c),
-                escapeCSV(q.options.d),
-                escapeCSV(q.correctAnswer)
+                escapeCSV(q.options ? q.options.a : ''), // Handle old data structure
+                escapeCSV(q.options ? q.options.b : ''),
+                escapeCSV(q.options ? q.options.c : ''),
+                escapeCSV(q.options ? q.options.d : ''),
+                escapeCSV(q.correctOption),
+                escapeCSV(q.correctAnswerText), // Replaced old correctAnswer
+                escapeCSV(q.questionImage),
+                escapeCSV(q.optionAImage),
+                escapeCSV(q.optionBImage),
+                escapeCSV(q.optionCImage),
+                escapeCSV(q.optionDImage)
             ].join(',');
         });
 
@@ -1060,7 +1453,9 @@ Now, based on the following metadata and question text, generate the output:
 
     // Helper function to trigger the download of a CSV file
     function downloadCSV(csvContent, filename) {
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        // Add BOM for proper Excel UTF-8 support
+        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+        const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
@@ -1079,10 +1474,10 @@ Now, based on the following metadata and question text, generate the output:
         }
         try {
             const csvContent = convertToCSV(questionsData);
-            downloadCSV(csvContent, 'dsssb_exam_analysis_full.csv');
+            downloadCSV(csvContent, 'dsssb_exam_analysis_full_with_images.csv');
         } catch (error) {
             console.error('Error exporting all data:', error);
-            alert('An error occurred while exporting all questions. Please check the console for details.');
+            alert('An error occurred while exporting all questions. Base64 strings can be very large and cause issues. Please check the console for details.');
         }
     }
 
@@ -1095,13 +1490,14 @@ Now, based on the following metadata and question text, generate the output:
         }
         try {
             const csvContent = convertToCSV(filteredData);
-            downloadCSV(csvContent, 'dsssb_exam_analysis_filtered.csv');
+            downloadCSV(csvContent, 'dsssb_exam_analysis_filtered_with_images.csv');
         } catch (error) {
             console.error('Error exporting filtered data:', error);
-            alert('An error occurred while exporting filtered questions. Please check the console for details.');
+            alert('An error occurred while exporting filtered questions. Base64 strings can be very large and cause issues. Please check the console for details.');
         }
     }
     
+    // Updated import function to handle new CSV format
     function importData(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -1110,32 +1506,58 @@ Now, based on the following metadata and question text, generate the output:
         reader.onload = function(e) {
             try {
                 const text = e.target.result;
-                const rows = text.split('\n').slice(1);
-                const importedQuestions = [];
+                const rows = text.split('\n');
+                
+                // Parse header row to find column indices
+                const headers = rows[0].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(h => h.replace(/^"|"$/g, '').replace(/""/g, '"').trim());
+                
+                const colMap = {};
+                headers.forEach((h, i) => colMap[h] = i);
 
-                rows.forEach(rowStr => {
-                    if (rowStr.trim() === '') return;
+                // Check for essential headers
+                if (!('Paper Number' in colMap) || !('Question Number' in colMap) || !('Section' in colMap) || !('Subject' in colMap) || !('Topic' in colMap) || !('Correct Option' in colMap)) {
+                    alert('Invalid CSV format. Missing one of the required columns: Paper Number, Question Number, Section, Subject, Topic, Correct Option.');
+                    return;
+                }
+
+                const importedQuestions = [];
+                for (let i = 1; i < rows.length; i++) {
+                    const rowStr = rows[i].trim();
+                    if (rowStr === '') continue;
+                    
                     const columns = rowStr.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(field => field.replace(/^"|"$/g, '').replace(/""/g, '"'));
-                    if (columns.length >= 12) {
-                         importedQuestions.push({
-                            paperNumber: columns[0],
-                            questionNumber: columns[1],
-                            section: columns[2],
-                            subject: columns[3],
-                            topic: columns[4],
-                            subtopic: columns[5] || 'N/A',
-                            questionText: columns[6] || '',
-                            options: {
-                                a: columns[7] || '',
-                                b: columns[8] || '',
-                                c: columns[9] || '',
-                                d: columns[10] || ''
-                            },
-                            correctAnswer: columns[11] || '',
-                            reviewStatus: 'new', easeFactor: 2.5, interval: 0, nextReviewDate: new Date().toISOString()
-                        });
-                    }
-                });
+                    
+                    if (columns.length < headers.length) continue; // Skip malformed rows
+
+                    const q = {
+                        paperNumber: columns[colMap['Paper Number']],
+                        questionNumber: columns[colMap['Question Number']],
+                        section: columns[colMap['Section']],
+                        subject: columns[colMap['Subject']],
+                        topic: columns[colMap['Topic']],
+                        subtopic: columns[colMap['Subtopic']] || 'N/A',
+                        questionText: columns[colMap['Question Text']] || '',
+                        options: {
+                            a: columns[colMap['Option A']] || '',
+                            b: columns[colMap['Option B']] || '',
+                            c: columns[colMap['Option C']] || '',
+                            d: columns[colMap['Option D']] || ''
+                        },
+                        correctOption: columns[colMap['Correct Option']],
+                        correctAnswerText: columns[colMap['Correct Answer Text']] || '',
+                        questionImage: columns[colMap['Question Image']] || '',
+                        optionAImage: columns[colMap['Option A Image']] || '',
+                        optionBImage: columns[colMap['Option B Image']] || '',
+                        optionCImage: columns[colMap['Option C Image']] || '',
+                        optionDImage: columns[colMap['Option D Image']] || '',
+                        reviewStatus: 'new', 
+                        easeFactor: 2.5, 
+                        interval: 0, 
+                        nextReviewDate: new Date().toISOString()
+                    };
+                    importedQuestions.push(q);
+                }
+
 
                 if (confirm(`Found ${importedQuestions.length} questions in the CSV. Do you want to overwrite existing data?`)) {
                     questionsData = importedQuestions;
@@ -1147,7 +1569,7 @@ Now, based on the following metadata and question text, generate the output:
                     alert('Data imported successfully!');
                 }
             } catch (error) {
-                alert('Failed to import CSV. Please check the file format.');
+                alert('Failed to import CSV. Please check the file format and console for errors.');
                 console.error(error);
             }
         };
@@ -1159,7 +1581,7 @@ Now, based on the following metadata and question text, generate the output:
         const batchDataEl = document.getElementById('batchData');
         const text = batchDataEl.value.trim();
         if (!text) {
-            alert('Please paste data from the Gem into the text area.');
+            alert('Please paste data from the Gem or Converter into the text area.');
             return;
         }
 
@@ -1173,9 +1595,49 @@ Now, based on the following metadata and question text, generate the output:
             let overwrittenCount = 0;
             
             batch.forEach(q => {
-                const uniqueId = `${q.paperNumber}-${q.questionNumber}`;
+                let importedCorrectOption = q.correctOption;
+                let importedCorrectAnswerText = q.correctAnswerText;
+
+                // Handle old JSON format (which has 'correctAnswer' with text)
+                // Check if 'correctAnswer' exists AND 'correctOption' does NOT
+                if (q.correctAnswer && !q.correctOption && q.options) {
+                    importedCorrectAnswerText = q.correctAnswer; // Use the text as the explanation
+                    
+                    // Find the matching option key
+                    for (const key in q.options) {
+                        if (q.options[key] === q.correctAnswer) {
+                            importedCorrectOption = key.toUpperCase(); // 'a' -> 'A'
+                            break; // Stop searching once found
+                        }
+                    }
+                }
+                // Handle new JSON format (which might have correctOption but not text)
+                else if (q.correctOption && !q.correctAnswerText && q.options) {
+                    const optKey = q.correctOption.toLowerCase(); // 'A' -> 'a'
+                    if (q.options[optKey]) {
+                        importedCorrectAnswerText = q.options[optKey]; // Set text from the option
+                    }
+                }
+
+                // Ensure the new fields exist
+                const newQuestionData = {
+                    ...q,
+                    questionImage: q.questionImage || '',
+                    optionAImage: q.optionAImage || '',
+                    optionBImage: q.optionBImage || '',
+                    optionCImage: q.optionCImage || '',
+                    optionDImage: q.optionDImage || '',
+                    correctOption: importedCorrectOption || '', // Use the processed value
+                    correctAnswerText: importedCorrectAnswerText || '', // Use the processed value
+                    options: q.options || { a: '', b: '', c: '', d: '' },
+                    reviewStatus: q.reviewStatus || 'new',
+                    easeFactor: q.easeFactor || 2.5,
+                    interval: q.interval || 0,
+                    nextReviewDate: q.nextReviewDate || new Date().toISOString()
+                };
+
+                const uniqueId = `${newQuestionData.paperNumber}-${newQuestionData.questionNumber}`;
                 const existingIndex = questionsData.findIndex(item => `${item.paperNumber}-${item.questionNumber}` === uniqueId);
-                const newQuestionData = { ...q, reviewStatus: 'new', easeFactor: 2.5, interval: 0, nextReviewDate: new Date().toISOString() };
 
                 if (existingIndex !== -1) {
                     questionsData[existingIndex] = { ...questionsData[existingIndex], ...newQuestionData };
@@ -1195,7 +1657,7 @@ Now, based on the following metadata and question text, generate the output:
             alert(`Batch import complete!\nAdded: ${addedCount} new questions.\nOverwritten: ${overwrittenCount} existing questions.`);
 
         } catch (error) {
-            alert('Failed to parse batch data. Please ensure it is a valid JSON array copied from the Gem.');
+            alert('Failed to parse batch data. Please ensure it is a valid JSON array copied from the Gem or Converter.');
             console.error(error);
         }
     }
@@ -1218,6 +1680,7 @@ Now, based on the following metadata and question text, generate the output:
         document.getElementById('reviewPanel').classList.remove('visible');
     }
 
+    // MODIFIED per request 3: Add metadata, update counter, reset nav
     function loadNextCard() {
         if (reviewSession.currentIndex >= reviewSession.questions.length) {
             alert('Review session complete!');
@@ -1228,31 +1691,107 @@ Now, based on the following metadata and question text, generate the output:
         const progress = ((reviewSession.currentIndex + 1) / reviewSession.questions.length) * 100;
         document.getElementById('reviewProgressBar').style.width = `${progress}%`;
 
-        const card = reviewSession.questions[reviewSession.currentIndex];
-        const flashcardQuestionText = document.querySelector('#flashcardContent .flashcard-question-text');
-        const flashcardOptions = document.querySelector('#flashcardContent .flashcard-options');
-        
-        flashcardQuestionText.textContent = card.questionText;
-        const optionsList = flashcardOptions.getElementsByTagName('li');
-        optionsList[0].textContent = `A) ${card.options.a}`;
-        optionsList[1].textContent = `B) ${card.options.b}`;
-        optionsList[2].textContent = `C) ${card.options.c}`;
-        optionsList[3].textContent = `D) ${card.options.d}`;
+        // Update nav controls state
+        document.getElementById('reviewCounter').textContent = `${reviewSession.currentIndex + 1} / ${reviewSession.questions.length}`;
+        document.getElementById('reviewPrevBtn').disabled = (reviewSession.currentIndex === 0);
+        document.getElementById('reviewNextBtn').disabled = false; // It's never disabled unless at end
 
-        document.getElementById('flashcardAnswer').textContent = `Correct Answer: ${card.correctAnswer}`;
+        const card = reviewSession.questions[reviewSession.currentIndex];
+        const flashcardContent = document.getElementById('flashcardContent');
+        
+        // --- Add metadata (request 3) ---
+        let metadataDiv = flashcardContent.querySelector('.flashcard-metadata');
+        if (!metadataDiv) {
+            metadataDiv = document.createElement('div');
+            metadataDiv.className = 'flashcard-metadata';
+            metadataDiv.style.background = "#eef5f9";
+            metadataDiv.style.borderRadius = "8px";
+            metadataDiv.style.padding = "10px";
+            metadataDiv.style.marginBottom = "15px";
+            metadataDiv.style.fontSize = "0.85rem";
+            flashcardContent.insertBefore(metadataDiv, flashcardContent.firstChild);
+        }
+        metadataDiv.innerHTML = `
+            <p style="margin: 0;"><strong>Subject:</strong> ${card.subject}</p>
+            <p style="margin: 0;"><strong>Topic:</strong> ${card.topic}</p>
+            <p style="margin: 0;"><strong>Subtopic:</strong> ${card.subtopic}</p>
+        `;
+        
+        const flashcardQuestionText = flashcardContent.querySelector('.flashcard-question-text');
+        const flashcardOptions = flashcardContent.querySelector('.flashcard-options');
+        
+        flashcardQuestionText.innerHTML = renderContent(card.questionText, card.questionImage);
+        
+        const optionsList = flashcardOptions.getElementsByTagName('li');
+        optionsList[0].innerHTML = `A) ${renderContent(card.options.a, card.optionAImage)}`;
+        optionsList[1].innerHTML = `B) ${renderContent(card.options.b, card.optionBImage)}`;
+        optionsList[2].innerHTML = `C) ${renderContent(card.options.c, card.optionCImage)}`;
+        optionsList[3].innerHTML = `D) ${renderContent(card.options.d, card.optionDImage)}`;
+
+        // Prepare answer content
+        let answerContent = '';
+        const correctOpt = card.correctOption; // 'A', 'B', 'C', or 'D'
+        if (correctOpt) {
+            answerContent = `<p><strong>Correct Option: ${correctOpt}</strong></p>`;
+            let text, image;
+            switch(correctOpt) {
+                case 'A': text = card.options.a; image = card.optionAImage; break;
+                case 'B': text = card.options.b; image = card.optionBImage; break;
+                case 'C': text = card.options.c; image = card.optionCImage; break;
+                case 'D': text = card.options.d; image = card.optionDImage; break;
+            }
+            if(text || image) { // Only add content if there is text or an image
+                answerContent += renderContent(text, image);
+            }
+        }
+        if (card.correctAnswerText) {
+            answerContent += `<hr style="margin: 10px 0;"><p><strong>Explanation:</strong></p>${renderContent(card.correctAnswerText, null)}`;
+        }
+        
+        document.getElementById('flashcardAnswer').innerHTML = answerContent || '<p><strong>Correct Option: ' + correctOpt + '</strong></p><p>(No answer details provided.)</p>';
+        
+        // Reset button states
         document.getElementById('flashcardAnswer').style.display = 'none';
         document.getElementById('showAnswerBtn').style.display = 'block';
         document.getElementById('ratingControls').style.display = 'none';
+        document.getElementById('navControls').style.display = 'none';
     }
 
+    // MODIFIED per request 3: Show Nav controls instead of Rating
     function showAnswer() {
         document.getElementById('flashcardAnswer').style.display = 'block';
         document.getElementById('showAnswerBtn').style.display = 'none';
-        document.getElementById('ratingControls').style.display = 'flex';
+        document.getElementById('ratingControls').style.display = 'none'; // Keep hidden
+        document.getElementById('navControls').style.display = 'flex'; // Show nav
     }
 
+    // ADDED per request 3: Navigation for review panel
+    function navigateReview(direction) {
+        const newIndex = reviewSession.currentIndex + direction;
+        
+        if (newIndex < 0) {
+            return; // Can't go before start
+        }
+        
+        if (newIndex >= reviewSession.questions.length) {
+            // Stay on last card if trying to go next
+            if(direction > 0) return;
+        }
+
+        // Check if we are at the end
+        if (newIndex === reviewSession.questions.length) {
+             alert('Review session complete!');
+             closeReview();
+             return;
+        }
+        
+        reviewSession.currentIndex = newIndex;
+        loadNextCard();
+    }
+
+
     function rateCard(rating) {
-        // Placeholder for Anki SM-2 algorithm logic. For now, it just moves to the next card.
+        // This function is no longer used by default but kept for posterity
         console.log(`Card rated as: ${rating}`);
         
         reviewSession.currentIndex++;
@@ -1261,30 +1800,101 @@ Now, based on the following metadata and question text, generate the output:
 
     // Modal Logic
     const modal = document.getElementById('detailsModal');
-    function showDetailsModal(uniqueId) {
+
+    // ADDED per request 3: New function to render modal content
+    function renderModalContent(uniqueId, index) {
         const question = questionsData.find(q => `${q.paperNumber}-${q.questionNumber}` === uniqueId);
         if (!question) return;
 
+        // Update context
+        modalViewContext.currentIndex = index;
+
         document.getElementById('modalTitle').textContent = `Details for Paper ${question.paperNumber} - Q#${question.questionNumber}`;
         const modalBody = document.getElementById('modalBody');
-        modalBody.innerHTML = `
-            <p><strong>Question:</strong> ${question.questionText}</p>
-            <hr style="margin: 15px 0;">
-            <p><strong>Options:</strong></p>
-            <ul style="list-style: none; padding-left: 10px;">
-                <li>A) ${question.options.a}</li>
-                <li>B) ${question.options.b}</li>
-                <li>C) ${question.options.c}</li>
-                <li>D) ${question.options.d}</li>
-            </ul>
-            <hr style="margin: 15px 0;">
-            <p><strong>Correct Answer:</strong> ${question.correctAnswer}</p>
+        
+        // Added metadata
+        let bodyHtml = `
+            <div style="background: #f8f9fa; border-radius: 8px; padding: 10px 15px; margin-bottom: 15px; font-size: 0.9rem;">
+                <p style="margin: 2px 0;"><strong>Subject:</strong> ${question.subject}</p>
+                <p style="margin: 2px 0;"><strong>Topic:</strong> ${question.topic}</p>
+                <p style="margin: 2px 0;"><strong>Subtopic:</strong> ${question.subtopic}</p>
+            </div>
         `;
+        
+        bodyHtml += `<p><strong>Question:</strong></p>${renderContent(question.questionText, question.questionImage)}`;
+        bodyHtml += `<hr style="margin: 15px 0;">`;
+        bodyHtml += `<p><strong>Options:</strong></p>`;
+        
+        const options = [
+            { id: 'A', text: question.options.a, image: question.optionAImage },
+            { id: 'B', text: question.options.b, image: question.optionBImage },
+            { id: 'C', text: question.options.c, image: question.optionCImage },
+            { id: 'D', text: question.options.d, image: question.optionDImage }
+        ];
+
+        options.forEach(opt => {
+            const isCorrect = question.correctOption === opt.id;
+            bodyHtml += `
+                <div class="modal-option ${isCorrect ? 'correct' : ''}">
+                    <strong class="${isCorrect ? 'correct-label' : ''}">Option ${opt.id}:</strong>
+                    ${renderContent(opt.text, opt.image)}
+                </div>
+            `;
+        });
+
+        if (question.correctAnswerText) {
+            bodyHtml += `<hr style="margin: 15px 0;">`;
+            bodyHtml += `<p><strong>Explanation:</strong></p>${renderContent(question.correctAnswerText, null)}`;
+        }
+        
+        // Added next/prev buttons
+        bodyHtml += `
+            <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #e0e6ed;">
+                <button class="btn btn-tertiary" id="modalPrevBtn" onclick="navigateModal(-1)" ${index === 0 ? 'disabled' : ''}>&larr; Previous</button>
+                <span style="font-size: 0.9rem; color: #555; white-space: nowrap;">${index + 1} / ${modalViewContext.list.length}</span>
+                <button class="btn" id="modalNextBtn" onclick="navigateModal(1)" ${index === modalViewContext.list.length - 1 ? 'disabled' : ''}>Next &rarr;</button>
+            </div>
+        `;
+
+        modalBody.innerHTML = bodyHtml;
+    }
+
+    // ADDED per request 3: Navigation function for modal
+    function navigateModal(direction) {
+        const newIndex = modalViewContext.currentIndex + direction;
+        if (newIndex >= 0 && newIndex < modalViewContext.list.length) {
+            const newUniqueId = modalViewContext.list[newIndex];
+            renderModalContent(newUniqueId, newIndex);
+        }
+    }
+    
+    // MODIFIED per request 3: Refactored to use new render function
+    function showDetailsModal(uniqueId) {
+        // Populate context
+        modalViewContext.list = getFilteredData().map(q => `${q.paperNumber}-${q.questionNumber}`);
+        const index = modalViewContext.list.indexOf(uniqueId);
+        
+        if (index === -1) {
+            console.error("Could not find question in filtered list.");
+            // Fallback: Show the question anyway but without context
+            modalViewContext.list = questionsData.map(q => `${q.paperNumber}-${q.questionNumber}`);
+            const fallbackIndex = modalViewContext.list.indexOf(uniqueId);
+            if (fallbackIndex === -1) {
+                 alert("Error: Could not find question data.");
+                 return;
+            }
+             renderModalContent(uniqueId, fallbackIndex);
+        } else {
+             renderModalContent(uniqueId, index); // Call the new render function
+        }
+        
         modal.style.display = 'flex';
     }
 
+
     function closeDetailsModal() {
         modal.style.display = 'none';
+        modalViewContext = { list: [], currentIndex: -1 }; // Clear context
     }
 
     window.onclick = function(event) {
