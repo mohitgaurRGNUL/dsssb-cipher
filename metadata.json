@@ -1,0 +1,5 @@
+{
+  "name": "DSSSB Cipher React",
+  "description": "A tool to log, analyze, and review questions for DSSSB exams. It supports text and image-based questions, batch import, data filtering, and exporting for use in other study applications.",
+  "requestFramePermissions": []
+}
