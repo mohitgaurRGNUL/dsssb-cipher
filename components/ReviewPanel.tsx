@@ -82,6 +82,7 @@ const ReviewPanel: React.FC<ReviewPanelProps> = ({ questions, onClose }) => {
                 <p className="m-0"><strong>Subject:</strong> {currentQuestion.subject}</p>
                 <p className="m-0"><strong>Topic:</strong> {currentQuestion.topic}</p>
                 <p className="m-0"><strong>Subtopic:</strong> {currentQuestion.subtopic}</p>
+                {currentQuestion.subheading && <p className="m-0"><strong>Subheading:</strong> {currentQuestion.subheading}</p>}
             </div>
             <div className="font-semibold mb-4" dangerouslySetInnerHTML={{ __html: renderContent(currentQuestion.questionText, currentQuestion.questionImage) }} />
             <ul className="list-none p-0 space-y-3">

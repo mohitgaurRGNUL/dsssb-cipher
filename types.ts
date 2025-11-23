@@ -2,10 +2,10 @@
 export interface Question {
   paperNumber: string;
   questionNumber: string;
-  section: string;
   subject: string;
   topic: string;
   subtopic: string;
+  subheading: string;
   questionText: string;
   questionImage: string;
   options: {
@@ -28,9 +28,9 @@ export interface Question {
 }
 
 export type Syllabus = {
-  [section: string]: {
-    [subject: string]: {
-      [topic: string]: string[];
+  [subject: string]: {
+    [topic: string]: {
+      [subtopic: string]: string[];
     };
   };
 };

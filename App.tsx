@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Question } from './types';
 import Header from './components/Header';
@@ -9,6 +8,8 @@ import QuestionTable from './components/QuestionTable';
 import ReviewPanel from './components/ReviewPanel';
 import DetailsModal from './components/DetailsModal';
 
+const STORAGE_KEY = 'cuetPgCipherData';
+
 const App: React.FC = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
@@ -18,7 +19,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     try {
-      const data = localStorage.getItem('dsssbExamAnalysisV5_Images');
+      const data = localStorage.getItem(STORAGE_KEY);
       if (data) {
         setQuestions(JSON.parse(data));
       }
@@ -29,7 +30,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     try {
-      localStorage.setItem('dsssbExamAnalysisV5_Images', JSON.stringify(questions));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
     } catch (error) {
       console.error("Failed to save data to localStorage", error);
     }
@@ -38,10 +39,9 @@ const App: React.FC = () => {
   const stats = useMemo(() => {
     return {
       total: questions.length,
-      sectionA: questions.filter(q => q.section === 'Section A').length,
-      sectionB: questions.filter(q => q.section === 'Section B').length,
+      filtered: filteredQuestionsCount,
     };
-  }, [questions]);
+  }, [questions, filteredQuestionsCount]);
 
   const handleAddOrUpdateQuestion = useCallback((formData: Question) => {
     setQuestions(prev => {
@@ -51,7 +51,8 @@ const App: React.FC = () => {
         if (editingQuestion) { // We are in update mode
             const editingId = `${editingQuestion.paperNumber}-${editingQuestion.questionNumber}`;
             const originalIndex = prev.findIndex(q => `${q.paperNumber}-${q.questionNumber}` === editingId);
-            if (originalIndex === -1) return prev; // Should not happen
+            
+            if (originalIndex === -1) return prev; 
 
             if (uniqueId !== editingId && existingIndex !== -1) {
                 alert(`Error: A question with Paper ${formData.paperNumber} and Q# ${formData.questionNumber} already exists.`);
@@ -59,7 +60,7 @@ const App: React.FC = () => {
             }
             const updatedQuestions = [...prev];
             updatedQuestions[originalIndex] = {
-                ...prev[originalIndex], // Preserve review stats
+                ...prev[originalIndex], 
                 ...formData
             };
             return updatedQuestions.sort((a, b) => (Number(a.paperNumber) - Number(b.paperNumber)) || (Number(a.questionNumber) - Number(b.questionNumber)));
@@ -83,145 +84,187 @@ const App: React.FC = () => {
     setEditingQuestion(null);
   }, []);
 
-  // FIX: Changed parameter type from `any[]` to `Partial<Question>[]` for better type safety.
-  const handleBatchImport = useCallback((importedQuestions: Partial<Question>[]) => {
+  const handleBatchImport = useCallback((importedQuestions: any[]) => {
     let addedCount = 0;
     let overwrittenCount = 0;
     
     setQuestions(prev => {
       const questionsMap = new Map(prev.map(q => [`${q.paperNumber}-${q.questionNumber}`, q]));
 
-      importedQuestions.forEach(q => {
+      importedQuestions.forEach((q: any) => {
         if (!q.paperNumber || !q.questionNumber) return; // Skip invalid entries
         const uniqueId = `${q.paperNumber}-${q.questionNumber}`;
 
         const newQuestionData: Question = {
-            paperNumber: q.paperNumber,
-            questionNumber: q.questionNumber,
-            section: q.section || '',
+            paperNumber: String(q.paperNumber),
+            questionNumber: String(q.questionNumber),
             subject: q.subject || '',
             topic: q.topic || '',
-            subtopic: q.subtopic || 'N/A',
+            subtopic: q.subtopic || '',
+            subheading: q.subheading || '',
             questionText: q.questionText || '',
             questionImage: q.questionImage || '',
-            options: q.options || { a: '', b: '', c: '', d: '' },
+            options: {
+                a: q.options?.a || '',
+                b: q.options?.b || '',
+                c: q.options?.c || '',
+                d: q.options?.d || '',
+            },
             optionAImage: q.optionAImage || '',
             optionBImage: q.optionBImage || '',
             optionCImage: q.optionCImage || '',
             optionDImage: q.optionDImage || '',
-            correctOption: q.correctOption || '',
+            correctOption: (q.correctOption as 'A' | 'B' | 'C' | 'D' | '') || '',
             correctAnswerText: q.correctAnswerText || '',
+            reviewStatus: 'new'
         };
 
-        // FIX: Added a check for existingQuestion to prevent spreading undefined, which would cause a runtime error.
         if (questionsMap.has(uniqueId)) {
-          const existingQuestion = questionsMap.get(uniqueId);
-          if (existingQuestion) {
-            questionsMap.set(uniqueId, { ...existingQuestion, ...newQuestionData });
             overwrittenCount++;
-          }
         } else {
-          questionsMap.set(uniqueId, newQuestionData);
-          addedCount++;
+            addedCount++;
         }
+        questionsMap.set(uniqueId, newQuestionData);
       });
+      
+      console.log(`Batch Import: Added ${addedCount}, Overwritten ${overwrittenCount}`);
+      setTimeout(() => alert(`Batch Import Complete. Added: ${addedCount}, Overwritten: ${overwrittenCount}`), 100);
+      
       return Array.from(questionsMap.values()).sort((a, b) => (Number(a.paperNumber) - Number(b.paperNumber)) || (Number(a.questionNumber) - Number(b.questionNumber)));
     });
 
-    alert(`Batch import complete!\nAdded: ${addedCount} new questions.\nOverwritten: ${overwrittenCount} existing questions.`);
   }, []);
 
-  const handleDelete = useCallback((uniqueId: string) => {
+  const onDelete = (uniqueId: string) => {
     if (window.confirm('Are you sure you want to delete this question?')) {
-      setQuestions(prev => prev.filter(q => `${q.paperNumber}-${q.questionNumber}` !== uniqueId));
+        setQuestions(prev => prev.filter(q => `${q.paperNumber}-${q.questionNumber}` !== uniqueId));
     }
-  }, []);
+  };
 
-  const handleDeleteSelected = useCallback((uniqueIds: string[]) => {
-    setQuestions(prev => prev.filter(q => !uniqueIds.includes(`${q.paperNumber}-${q.questionNumber}`)));
-  }, []);
-  
-  const handleDeleteAll = useCallback(() => {
-    if (window.confirm('ARE YOU SURE you want to delete ALL questions? This cannot be undone.')) {
+  const onDeleteSelected = (uniqueIds: string[]) => {
+      setQuestions(prev => prev.filter(q => !uniqueIds.includes(`${q.paperNumber}-${q.questionNumber}`)));
+  };
+
+  const onDeleteAll = () => {
+    if (window.confirm('Are you sure you want to delete ALL questions? This cannot be undone.')) {
         setQuestions([]);
+        localStorage.removeItem(STORAGE_KEY);
     }
-  }, []);
+  };
 
-  const handleImportCSV = useCallback((file: File) => {
+  const onEdit = (question: Question) => {
+      setEditingQuestion(question);
+  };
+
+  const onView = (question: Question) => {
+      setViewingQuestion(question);
+  };
+
+  const onImportCSV = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      try {
         const text = e.target?.result as string;
+        if (!text) return;
+        
         const rows = text.split('\n');
-        const headers = rows[0].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(h => h.replace(/^"|"$/g, '').trim());
-        const colMap: { [key: string]: number } = {};
-        headers.forEach((h, i) => colMap[h] = i);
-        // ... (rest of CSV parsing logic)
-        const imported = rows.slice(1).map(rowStr => {
-           const cols = rowStr.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(field => field.replace(/^"|"$/g, ''));
-           return {
-                paperNumber: cols[colMap['Paper Number']] || '',
-                questionNumber: cols[colMap['Question Number']] || '',
-                section: cols[colMap['Section']] || '',
-                subject: cols[colMap['Subject']] || '',
-                topic: cols[colMap['Topic']] || '',
-                subtopic: cols[colMap['Subtopic']] || 'N/A',
-                questionText: cols[colMap['Question Text']] || '',
+        
+        const imported: any[] = [];
+        
+        for(let i=1; i<rows.length; i++) {
+            if(!rows[i].trim()) continue;
+            // Handle CSV parsing with quotes
+            const rowData: string[] = [];
+            let current = '';
+            let inQuote = false;
+            for(let j=0; j<rows[i].length; j++) {
+                const char = rows[i][j];
+                if(char === '"') {
+                    if(inQuote && rows[i][j+1] === '"') {
+                        current += '"';
+                        j++;
+                    } else {
+                        inQuote = !inQuote;
+                    }
+                } else if(char === ',' && !inQuote) {
+                    rowData.push(current);
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            rowData.push(current);
+
+            if(rowData.length < 2) continue;
+
+            imported.push({
+                paperNumber: rowData[0],
+                questionNumber: rowData[1],
+                subject: rowData[2],
+                topic: rowData[3],
+                subtopic: rowData[4],
+                subheading: rowData[5],
+                questionText: rowData[6],
                 options: {
-                    a: cols[colMap['Option A']] || '', b: cols[colMap['Option B']] || '',
-                    c: cols[colMap['Option C']] || '', d: cols[colMap['Option D']] || ''
+                    a: rowData[7],
+                    b: rowData[8],
+                    c: rowData[9],
+                    d: rowData[10],
                 },
-                correctOption: cols[colMap['Correct Option']] as Question['correctOption'] || '',
-                correctAnswerText: cols[colMap['Correct Answer Text']] || '',
-                questionImage: cols[colMap['Question Image']] || '',
-                optionAImage: cols[colMap['Option A Image']] || '',
-                optionBImage: cols[colMap['Option B Image']] || '',
-                optionCImage: cols[colMap['Option C Image']] || '',
-                optionDImage: cols[colMap['Option D Image']] || '',
-           } as Question;
-        }).filter(q => q.paperNumber && q.questionNumber); // Basic validation
-        if(window.confirm(`Found ${imported.length} questions. Overwrite existing data?`)){
-          setQuestions(imported.sort((a, b) => (Number(a.paperNumber) - Number(b.paperNumber)) || (Number(a.questionNumber) - Number(b.questionNumber))));
-          alert('Data imported!');
+                correctOption: rowData[11],
+                correctAnswerText: rowData[12],
+                questionImage: rowData[13],
+                optionAImage: rowData[14],
+                optionBImage: rowData[15],
+                optionCImage: rowData[16],
+                optionDImage: rowData[17],
+            });
         }
-      } catch (error) {
-        console.error(error);
-        alert('Failed to import CSV.');
-      }
+        handleBatchImport(imported);
     };
     reader.readAsText(file);
-  }, []);
-
-  const handleStartReview = useCallback((questionsToReview: Question[]) => {
-    if (questionsToReview.length > 0) {
-        setReviewQuestions(questionsToReview);
-    } else {
-        alert('No questions match the current filters for review.');
-    }
-  }, []);
-
+  };
+  
   return (
-    <div className="bg-gradient-to-br from-indigo-400 to-purple-500 min-h-screen text-gray-800 font-sans">
-      <main className="container mx-auto p-4 md:p-8">
+    <div className="min-h-screen bg-gray-100 p-4 md:p-8 font-sans text-gray-800">
+      <div className="max-w-7xl mx-auto">
         <Header />
-        <Stats total={stats.total} sectionA={stats.sectionA} sectionB={stats.sectionB} filtered={filteredQuestionsCount} />
-        <QuestionForm onSubmit={handleAddOrUpdateQuestion} onCancelEdit={handleCancelEdit} editingQuestion={editingQuestion} />
-        <BatchImport onImport={handleBatchImport} />
-        <QuestionTable
-          questions={questions}
-          onDelete={handleDelete}
-          onDeleteSelected={handleDeleteSelected}
-          onDeleteAll={handleDeleteAll}
-          onView={setViewingQuestion}
-          onEdit={setEditingQuestion}
-          onImportCSV={handleImportCSV}
-          filteredQuestionsCount={filteredQuestionsCount}
-          setFilteredQuestionsCount={setFilteredQuestionsCount}
-          onStartReview={handleStartReview}
+        <Stats total={stats.total} filtered={stats.filtered} />
+        
+        <QuestionForm 
+            onSubmit={handleAddOrUpdateQuestion} 
+            onCancelEdit={handleCancelEdit} 
+            editingQuestion={editingQuestion} 
         />
-      </main>
-      {viewingQuestion && <DetailsModal question={viewingQuestion} onClose={() => setViewingQuestion(null)} />}
-      {reviewQuestions.length > 0 && <ReviewPanel questions={reviewQuestions} onClose={() => setReviewQuestions([])} />}
+        
+        <BatchImport onImport={handleBatchImport} />
+        
+        <QuestionTable 
+            questions={questions}
+            onDelete={onDelete}
+            onDeleteSelected={onDeleteSelected}
+            onDeleteAll={onDeleteAll}
+            onView={onView}
+            onEdit={onEdit}
+            onImportCSV={onImportCSV}
+            filteredQuestionsCount={filteredQuestionsCount}
+            setFilteredQuestionsCount={setFilteredQuestionsCount}
+            onStartReview={setReviewQuestions}
+        />
+        
+        {reviewQuestions.length > 0 && (
+            <ReviewPanel 
+                questions={reviewQuestions} 
+                onClose={() => setReviewQuestions([])} 
+            />
+        )}
+        
+        {viewingQuestion && (
+            <DetailsModal 
+                question={viewingQuestion} 
+                onClose={() => setViewingQuestion(null)} 
+            />
+        )}
+      </div>
     </div>
   );
 };

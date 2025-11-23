@@ -39,10 +39,11 @@ const DetailsModal: React.FC<DetailsModalProps> = ({ question, onClose }) => {
           <button onClick={onClose} className="text-3xl text-gray-500 hover:text-gray-800">&times;</button>
         </div>
         <div className="p-6 space-y-4">
-          <div className="bg-gray-50 p-3 rounded-lg text-sm">
-            <p><strong>Subject:</strong> {question.subject}</p>
-            <p><strong>Topic:</strong> {question.topic}</p>
-            <p><strong>Subtopic:</strong> {question.subtopic}</p>
+          <div className="bg-gray-50 p-3 rounded-lg text-sm grid grid-cols-2 gap-2">
+            <div><strong>Subject:</strong> {question.subject}</div>
+            <div><strong>Topic:</strong> {question.topic}</div>
+            <div><strong>Subtopic:</strong> {question.subtopic}</div>
+            <div><strong>Subheading:</strong> {question.subheading}</div>
           </div>
           <div>
             <p className="font-bold">Question:</p>

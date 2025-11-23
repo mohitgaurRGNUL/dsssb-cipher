@@ -15,18 +15,14 @@ const StatCard: React.FC<StatCardProps> = ({ value, label }) => (
 
 interface StatsProps {
   total: number;
-  sectionA: number;
-  sectionB: number;
   filtered: number;
 }
 
-const Stats: React.FC<StatsProps> = ({ total, sectionA, sectionB, filtered }) => {
+const Stats: React.FC<StatsProps> = ({ total, filtered }) => {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-      <StatCard value={total} label="Total Questions Logged" />
-      <StatCard value={sectionA} label="Section A Questions" />
-      <StatCard value={sectionB} label="Section B Questions" />
-      <StatCard value={filtered} label="Filtered Questions" />
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <StatCard value={total} label="Total Questions" />
+      <StatCard value={filtered} label="Filtered View" />
     </div>
   );
 };

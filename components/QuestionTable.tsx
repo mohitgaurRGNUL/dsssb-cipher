@@ -32,35 +32,33 @@ const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement> & { variant
 const QuestionTable: React.FC<QuestionTableProps> = ({
   questions, onDelete, onDeleteSelected, onDeleteAll, onView, onEdit, onImportCSV, setFilteredQuestionsCount, onStartReview
 }) => {
-  const [filters, setFilters] = useState({ paper: '', subject: '', topic: '', subtopic: '', keyword: '' });
+  const [filters, setFilters] = useState({ paper: '', subject: '', topic: '', subtopic: '', subheading: '', keyword: '' });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isAllSelected, setIsAllSelected] = useState(false);
   const csvInputRef = React.useRef<HTMLInputElement>(null);
 
   const filterOptions = useMemo(() => {
     const papers = [...new Set(questions.map(q => q.paperNumber))].sort((a, b) => Number(a) - Number(b));
-    const subjectsAll = [...new Set([...Object.keys(syllabusStructure["Section A"]), ...Object.keys(syllabusStructure["Section B"])])].sort();
+    const subjects = Object.keys(syllabusStructure).sort();
     
-    let subjects = subjectsAll;
     let topics: string[] = [];
     let subtopics: string[] = [];
+    let subheadings: string[] = [];
     
     if (filters.subject) {
-      const section = Object.keys(syllabusStructure).find(sec => syllabusStructure[sec][filters.subject]);
-      if (section) {
-        topics = Object.keys(syllabusStructure[section][filters.subject]).sort();
-      }
+      topics = Object.keys(syllabusStructure[filters.subject] || {}).sort();
     }
     
     if (filters.subject && filters.topic) {
-       const section = Object.keys(syllabusStructure).find(sec => syllabusStructure[sec][filters.subject]);
-       if (section) {
-         subtopics = (syllabusStructure[section][filters.subject][filters.topic] || []).sort();
-       }
+         subtopics = Object.keys(syllabusStructure[filters.subject][filters.topic] || {}).sort();
     }
 
-    return { papers, subjects, topics, subtopics };
-  }, [questions, filters.subject, filters.topic]);
+    if (filters.subject && filters.topic && filters.subtopic) {
+         subheadings = syllabusStructure[filters.subject][filters.topic][filters.subtopic] || [];
+    }
+
+    return { papers, subjects, topics, subtopics, subheadings };
+  }, [questions, filters.subject, filters.topic, filters.subtopic]);
 
   const filteredData = useMemo(() => {
     return questions.filter(q => {
@@ -71,6 +69,7 @@ const QuestionTable: React.FC<QuestionTableProps> = ({
         (q.subject && q.subject.toLowerCase().includes(keyword)) ||
         (q.topic && q.topic.toLowerCase().includes(keyword)) ||
         (q.subtopic && q.subtopic.toLowerCase().includes(keyword)) ||
+        (q.subheading && q.subheading.toLowerCase().includes(keyword)) ||
         (q.options.a && q.options.a.toLowerCase().includes(keyword)) ||
         (q.options.b && q.options.b.toLowerCase().includes(keyword)) ||
         (q.options.c && q.options.c.toLowerCase().includes(keyword)) ||
@@ -82,6 +81,7 @@ const QuestionTable: React.FC<QuestionTableProps> = ({
         (!filters.subject || q.subject === filters.subject) &&
         (!filters.topic || q.topic === filters.topic) &&
         (!filters.subtopic || q.subtopic === filters.subtopic) &&
+        (!filters.subheading || q.subheading === filters.subheading) &&
         keywordMatch
       );
     });
@@ -99,9 +99,14 @@ const QuestionTable: React.FC<QuestionTableProps> = ({
         if(name === 'subject') {
             newFilters.topic = '';
             newFilters.subtopic = '';
+            newFilters.subheading = '';
         }
         if(name === 'topic') {
             newFilters.subtopic = '';
+            newFilters.subheading = '';
+        }
+        if(name === 'subtopic') {
+            newFilters.subheading = '';
         }
         return newFilters;
     });
@@ -156,55 +161,15 @@ const QuestionTable: React.FC<QuestionTableProps> = ({
       alert('Please select questions to copy metadata.');
       return;
     }
-    let metadataText = `Go through the selected source carefully. Based on the metadata (which comes from past year DSSSB exam paper analysis) and the question text (which contains actual previous exam questions), generate 10 most important questions that are most likely to appear in future exams.
-
-🔹 Your Task:
-
-Analyze the metadata + question text.
-Identify the most exam-relevant questions.
-Present them in the flashcard format shown below.
-
-📘 Flashcard Creation Instructions
-
-Input: Educational text (paragraph, notes, or previous question).
-Processing: Read line by line.
-Output: For each line, generate multiple-choice flashcards with:
-
-One question (Q:)
-Four answer choices (A, B, C, D)
-The correct answer marked at the end with |
-
-📑 Flashcard Format Example
-
-Input Line:
-We can tell something is alive if it moves on its own.
-
-Flashcards Output:
-
-Q: How do we tell the difference between what is alive and what is not alive?
-A. By their size
-B. By their color
-C. By their movement
-D. By their sound | C. By their movement
-
-🛠 Rules You Must Follow
-
-Generate 10 most important exam questions (not explanations).
-Only one correct option per question.
-Options should be slightly confusing but with one correct answer.
-Stay within the subject, topic, and subtopic mentioned in the metadata.
-
-Now, based on the following metadata and question text, generate the output:
-
-`;
+    let metadataText = `Go through the selected source carefully. Based on the metadata and the question text, generate 10 most important questions that are most likely to appear in future exams.\n\n🔹 Your Task:\nAnalyze the metadata + question text.\nIdentify the most exam-relevant questions.\nPresent them in the flashcard format shown below.\n\n📘 Flashcard Creation Instructions\nInput: Educational text (paragraph, notes, or previous question).\nProcessing: Read line by line.\nOutput: For each line, generate multiple-choice flashcards with:\nOne question (Q:)\nFour answer choices (A, B, C, D)\nThe correct answer marked at the end with |\n\n📑 Flashcard Format Example\nInput Line:\nWe can tell something is alive if it moves on its own.\n\nFlashcards Output:\nQ: How do we tell the difference between what is alive and what is not alive?\nA. By their size\nB. By their color\nC. By their movement\nD. By their sound | C. By their movement\n\n🛠 Rules You Must Follow\nGenerate 10 most important exam questions (not explanations).\nOnly one correct option per question.\nOptions should be slightly confusing but with one correct answer.\nStay within the subject, topic, subtopic, and subheading mentioned in the metadata.\n\nNow, based on the following metadata and question text, generate the output:\n\n`;
     questionsToCopy.forEach((q, index) => {
         metadataText += `--- Metadata Example ${index + 1} ---\n`;
         metadataText += `Paper: ${q.paperNumber}\n`;
         metadataText += `Question #: ${q.questionNumber}\n`;
-        metadataText += `Section: ${q.section}\n`;
         metadataText += `Subject: ${q.subject}\n`;
         metadataText += `Topic: ${q.topic}\n`;
         metadataText += `Subtopic: ${q.subtopic}\n`;
+        metadataText += `Subheading: ${q.subheading}\n`;
         metadataText += `Question: ${q.questionText || '(Image Question)'}\n`;
         metadataText += `Correct Option: ${q.correctOption}\n`;
         metadataText += `Explanation: ${q.correctAnswerText || 'N/A'}\n\n`;
@@ -233,7 +198,7 @@ Now, based on the following metadata and question text, generate the output:
       alert('No data to export!');
       return;
     }
-    const headers = ['Paper Number', 'Question Number', 'Section', 'Subject', 'Topic', 'Subtopic', 'Question Text', 'Option A', 'Option B', 'Option C', 'Option D', 'Correct Option', 'Correct Answer Text', 'Question Image', 'Option A Image', 'Option B Image', 'Option C Image', 'Option D Image'];
+    const headers = ['Paper Number', 'Question Number', 'Subject', 'Topic', 'Subtopic', 'Subheading', 'Question Text', 'Option A', 'Option B', 'Option C', 'Option D', 'Correct Option', 'Correct Answer Text', 'Question Image', 'Option A Image', 'Option B Image', 'Option C Image', 'Option D Image'];
     const escapeCSV = (val: any) => {
         if (val === undefined || val === null) return '';
         const str = String(val);
@@ -242,12 +207,12 @@ Now, based on the following metadata and question text, generate the output:
         }
         return str;
     };
-    const rows = data.map(q => [q.paperNumber, q.questionNumber, q.section, q.subject, q.topic, q.subtopic, q.questionText, q.options.a, q.options.b, q.options.c, q.options.d, q.correctOption, q.correctAnswerText, q.questionImage, q.optionAImage, q.optionBImage, q.optionCImage, q.optionDImage].map(escapeCSV).join(','));
+    const rows = data.map(q => [q.paperNumber, q.questionNumber, q.subject, q.topic, q.subtopic, q.subheading, q.questionText, q.options.a, q.options.b, q.options.c, q.options.d, q.correctOption, q.correctAnswerText, q.questionImage, q.optionAImage, q.optionBImage, q.optionCImage, q.optionDImage].map(escapeCSV).join(','));
     const csvContent = [headers.join(','), ...rows].join('\n');
     downloadFile('\uFEFF' + csvContent, filename, 'text/csv;charset=utf-8;');
   };
 
-  const exportToTxt = (data: Question[], filename: string) => {
+  const exportFlashcards = (data: Question[], filename: string) => {
     if (data.length === 0) {
         alert('No data to export!');
         return;
@@ -294,16 +259,17 @@ Now, based on the following metadata and question text, generate the output:
             <Button variant="info" onClick={copyMetadata}>Copy Metadata</Button>
             <input type="file" ref={csvInputRef} onChange={handleFileChange} accept=".csv" className="hidden" />
             <Button variant="warning" onClick={handleImportClick}>Import CSV</Button>
-            <Button variant="success" onClick={() => exportToCSV(questions, 'dsssb_all_questions.csv')}>Export All CSV</Button>
-            <Button variant="success" onClick={() => exportToCSV(filteredData, 'dsssb_filtered_questions.csv')}>Export Filtered CSV</Button>
-            <Button variant="success" onClick={() => exportToTxt(filteredData, 'dsssb_filtered_questions.txt')}>Export .txt</Button>
+            <Button variant="success" onClick={() => exportToCSV(questions, 'cuet_full.csv')}>Export All CSV</Button>
+            <Button variant="success" onClick={() => exportToCSV(filteredData, 'cuet_filtered.csv')}>Export Filtered CSV</Button>
+            <Button variant="success" onClick={() => exportFlashcards(filteredData, 'flashcards_import.txt')}>Export .txt</Button>
         </div>
       </div>
       <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 border-b border-gray-200">
-          <select name="paper" value={filters.paper} onChange={handleFilterChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white"><option value="">All Papers</option>{filterOptions.papers.map(p => <option key={p} value={p}>{p}</option>)}</select>
+          <select name="paper" value={filters.paper} onChange={handleFilterChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white"><option value="">All Papers</option>{filterOptions.papers.map(p => <option key={p} value={p}>Paper {p}</option>)}</select>
           <select name="subject" value={filters.subject} onChange={handleFilterChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white"><option value="">All Subjects</option>{filterOptions.subjects.map(s => <option key={s} value={s}>{s}</option>)}</select>
           <select name="topic" value={filters.topic} onChange={handleFilterChange} disabled={!filters.subject} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white disabled:bg-gray-100"><option value="">All Topics</option>{filterOptions.topics.map(t => <option key={t} value={t}>{t}</option>)}</select>
           <select name="subtopic" value={filters.subtopic} onChange={handleFilterChange} disabled={!filters.topic} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white disabled:bg-gray-100"><option value="">All Subtopics</option>{filterOptions.subtopics.map(st => <option key={st} value={st}>{st}</option>)}</select>
+          <select name="subheading" value={filters.subheading} onChange={handleFilterChange} disabled={!filters.subtopic} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white disabled:bg-gray-100"><option value="">All Subheadings</option>{filterOptions.subheadings.map(sh => <option key={sh} value={sh}>{sh}</option>)}</select>
           <input type="text" name="keyword" placeholder="Search by Keyword or Q#" value={filters.keyword} onChange={handleFilterChange} className="sm:col-span-2 xl:col-span-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"/>
           <Button onClick={() => onStartReview(filteredData)} disabled={filteredData.length === 0} className="sm:col-span-2 xl:col-span-1 w-full">Start Review</Button>
       </div>
@@ -314,10 +280,10 @@ Now, based on the following metadata and question text, generate the output:
               <th className="p-4"><input type="checkbox" checked={isAllSelected} onChange={handleSelectAll} /></th>
               <th className="px-6 py-3">Paper#</th>
               <th className="px-6 py-3">Q#</th>
-              <th className="px-6 py-3">Section</th>
               <th className="px-6 py-3">Subject</th>
               <th className="px-6 py-3">Topic</th>
               <th className="px-6 py-3">Subtopic</th>
+              <th className="px-6 py-3">Subheading</th>
               <th className="px-6 py-3">Actions</th>
             </tr>
           </thead>
@@ -329,10 +295,10 @@ Now, based on the following metadata and question text, generate the output:
                   <td className="p-4"><input type="checkbox" checked={selectedIds.includes(uniqueId)} onChange={() => handleSelect(uniqueId)} /></td>
                   <td className="px-6 py-4">{q.paperNumber}</td>
                   <td className="px-6 py-4">{q.questionNumber}</td>
-                  <td className="px-6 py-4">{q.section}</td>
                   <td className="px-6 py-4 whitespace-nowrap">{q.subject}</td>
                   <td className="px-6 py-4 whitespace-nowrap">{q.topic}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{q.subtopic}</td>
+                  <td className="px-6 py-4 whitespace-nowrap max-w-[150px] truncate" title={q.subtopic}>{q.subtopic}</td>
+                  <td className="px-6 py-4 whitespace-nowrap max-w-[150px] truncate" title={q.subheading}>{q.subheading}</td>
                   <td className="px-6 py-4 flex gap-2">
                     <button onClick={() => onView(q)} className="font-medium text-indigo-600 hover:underline">View</button>
                     <button onClick={() => onEdit(q)} className="font-medium text-yellow-600 hover:underline">Edit</button>
